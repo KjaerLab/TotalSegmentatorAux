@@ -96,7 +96,7 @@ def show_license_info():
 def totalsegmentator(input: Union[str, Path, Nifti1Image], output: Union[str, Path, None]=None, ml=False, nr_thr_resamp=1, nr_thr_saving=6,
                      fast=False, nora_tag="None", preview=False, task="total", roi_subset=None,
                      statistics=False, radiomics=False, crop_path=None, body_seg=False,
-                     force_split=False, output_type="nifti", quiet=False, verbose=False, test=0,
+                     force_split=False, output_type=["nifti"], quiet=False, verbose=False, test=0,
                      skip_saving=False, device="gpu", license_number=None,
                      statistics_exclude_masks_at_border=True, no_derived_masks=False,
                      v1_order=False, fastest=False, roi_subset_robust=None, stats_aggregation="mean",
@@ -129,13 +129,13 @@ def totalsegmentator(input: Union[str, Path, Nifti1Image], output: Union[str, Pa
     device = select_device(device)
     if verbose: print(f"Using Device: {device}")
     
-    if output_type == "dicom_rtstruct":
+    if "dicom_rtstruct" in output_type:
         try:
             from rt_utils import RTStructBuilder
         except ImportError:
             raise ImportError("rt_utils is required for output_type='dicom_rtstruct'. Please install it with 'pip install rt_utils'.")
     
-    if output_type == "dicom_seg":
+    if "dicom_seg" in output_type:
         try:
             import highdicom
         except ImportError:

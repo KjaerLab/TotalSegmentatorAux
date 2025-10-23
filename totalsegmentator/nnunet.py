@@ -325,7 +325,7 @@ def nnUNet_predict_image(file_in: Union[str, Path, Nifti1Image], file_out, task_
                          trainer="nnUNetTrainerV2", tta=False, multilabel_image=True,
                          resample=None, crop=None, crop_path=None, task_name="total", nora_tag="None", preview=False,
                          save_binary=False, nr_threads_resampling=1, nr_threads_saving=6, force_split=False,
-                         crop_addon=[3,3,3], roi_subset=None, output_type="nifti",
+                         crop_addon=[3,3,3], roi_subset=None, output_type=["nifti"],
                          statistics=False, quiet=False, verbose=False, test=0, skip_saving=False,
                          device="cuda", exclude_masks_at_border=True, no_derived_masks=False,
                          v1_order=False, stats_aggregation="mean", remove_small_blobs=False,
@@ -348,13 +348,12 @@ def nnUNet_predict_image(file_in: Union[str, Path, Nifti1Image], file_out, task_
         img_type = "nifti"
     if file_out is not None:
         file_out = Path(file_out)
-    multimodel = type(task_id) is list
-
-    if img_type == "nifti" and (output_type == "dicom_rtstruct" or output_type == "dicom_seg"):
-        raise ValueError("To use output type dicom_rtstruct or dicom_seg you also have to use a Dicom image as input.")
+    multimodel = type(task_id) is list      
 
     # These outputs always result in a single multilabel file
-    if output_type == "dicom_rtstruct" or output_type == "dicom_seg":
+    if "dicom_rtstruct" in output_type or "dicom_seg" in output_type:
+        if img_type == "nifti":
+            raise ValueError("To use output type dicom_rtstruct or dicom_seg you also have to use a Dicom image as input.")
         multilabel_image = True
 
     if task_name == "total":
@@ -735,19 +734,22 @@ def nnUNet_predict_image(file_in: Union[str, Path, Nifti1Image], file_out, task_
             if roi_subset is not None:
                 selected_classes = {k:v for k, v in selected_classes.items() if v in roi_subset}
 
-            if output_type == "dicom_rtstruct":
+            if "dicom_rtstruct" in output_type:
                 # file_out.mkdir(exist_ok=True, parents=True)
-                save_mask_as_rtstruct(img_data, selected_classes, file_in_dcm, file_out)
-            elif output_type == "dicom_seg":
+                file_out_rt = file_out.with_name(f'rtstruct_{file_out.stem}.dcm') if len(output_type) > 1 else file_out.with_suffix('.dcm')
+                save_mask_as_rtstruct(img_data, selected_classes, file_in_dcm, file_out_rt)
+            if "dicom_seg" in output_type:
                 # file_out.mkdir(exist_ok=True, parents=True)
-                save_mask_as_dicomseg(img_data, selected_classes, file_in_dcm, file_out, img_out.affine)
-            else:
+                file_out_dcmseg = file_out.with_name(f'dicomseg_{file_out.stem}.dcm') if len(output_type) > 1 else file_out.with_suffix('.dcm')
+                save_mask_as_dicomseg(img_data, selected_classes, file_in_dcm, file_out_dcmseg, img_out.affine)
+            if "nifti" in output_type:
                 st = time.time()
                 if multilabel_image:
                     file_out.parent.mkdir(exist_ok=True, parents=True)
                 else:
                     file_out.mkdir(exist_ok=True, parents=True)
                 if multilabel_image:
+                    file_out = file_out.with_suffix('.nii.gz')
                     nib.save(img_out, file_out)
                     if nora_tag != "None":
                         subprocess.call(f"/opt/nora/src/node/nora -p {nora_tag} --add {file_out} --addtag atlas", shell=True)
